@@ -1,0 +1,252 @@
+---
+title: "Homework 6"
+author: "Ainesh Mohan"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Problem \#1: Estimating Quantiles <small>(8 pts; 2pts each)</small>
+
+There are 9 algorithms in R to estimate population quantiles. Type `?quantile` to read about them. Here we will investigate the variance of some of these estimators. To use the quantile function you use the syntax
+`quantile(vector, probs, type)`.
+For example if you have data in a vector called `sampleData` and you wish to estimate the 80th percentile using algorithm 7 (the default), you use
+`quantile(sampleData, .80, type=7)`
+
+Suppose we're interested in the 95th percentile for $X$, and we know that $X$ follows a uniform distribution. We want to randomly sample $n=30$ values and estimate the 95th percentile. Using MC simulation estimate the following:
+
+a. Which quantile algorithm (4 through 9 has the smallest absolute bias? *Hint: you can use $unif(0,1)$ for the purposes of this estimation, as your answer won't depend on the upper and lower bounds chosen.*
+b. Which quantile algorithm (4 through 9) has the smallest variance?
+c. Which method is best for estimating the 95th percentile from a uniform distribution? Justify your answer.
+d. What about if $X\sim N(\mu, \sigma^2)$? Would you prefer a different method for estimating the 95th percentile from a normal distribution? *Hint: repeat the same analysis for $N(0,1)$.*
+
+```{r}
+# Set up the Monte Carlo simulation
+set.seed(123)  # for reproducibility
+n <- 30  # sample size
+N <- 10000  # number of simulations
+true_quantile <- 0.95
+algorithms <- 4:9
+results <- matrix(0, nrow = length(algorithms), ncol = 2, dimnames = list(algorithms, c("Bias", "Variance")))
+
+# Perform the simulation for uniform distribution
+for (alg in algorithms) {
+  quantiles <- numeric(N)
+  for (i in 1:N) {
+    sampleData <- runif(n)  # sample from U(0, 1)
+    quantiles[i] <- quantile(sampleData, probs = true_quantile, type = alg)
+  }
+  bias <- mean(quantiles) - true_quantile
+  variance <- var(quantiles)
+  results[as.character(alg),] <- c(abs(bias), variance)
+}
+
+# Display results for uniform distribution
+results
+```
+
+```{r}
+# Perform the simulation for normal distribution
+for (alg in algorithms) {
+  quantiles <- numeric(N)
+  for (i in 1:N) {
+    sampleData <- rnorm(n)  # sample from N(0, 1)
+    quantiles[i] <- quantile(sampleData, probs = true_quantile, type = alg)
+  }
+  bias <- mean(quantiles) - qnorm(true_quantile)
+  variance <- var(quantiles)
+  results[as.character(alg),] <- c(abs(bias), variance)
+}
+
+# Display results for normal distribution
+results
+
+```
+> (a) smallest absolute bias is algorithm 6 (looking at normal dist)
+
+> (b) smallest variance is algorithm 6
+
+> (c) I think algorithm 6 would be the best method for estimaing the 95th percentile from a unif distribuion because it has the lowest bias and variance.
+
+> (d) smallest absolute bias is algorithm 9 (looking at normal dist); smallest variance is algorithm 7; I think algorithm 9 would be the best method for estimaing the 95th percentile from a unif distribuion because it has the lowest bias and one of the lowest variances.
+
+
+## Problem \#2: Estimating a Geometric $p$ <small>(6 pts; 2 pts each)</small>
+
+a. Use the method of moments to come up with an estimator for a geometric distributions parameter $p$. *Hint: Use the fact that if $X\sim Geom(p)$ then $EX=\frac{1-p}{p}$. 
+b. Estimate the sampling distribution of this estimator when we sample $n=13$ values from from $Geom(.15)$. Show the histogram of the estimated sampling distribution.
+c. Estimate the bias of this estimator. Is it biased? If it is biased how would you modify it so that you could create an unbiased estimator?
+
+
+### a. Method of Moments Estimator for Geometric Distribution
+
+The method of moments involves setting the sample mean equal to the theoretical mean and solving for the parameter of interest. For a geometric distribution with parameter $p$, the mean is $E(X) = \frac{1-p}{p}$. We equate this to the sample mean $\bar{x}$ and solve for $p$:
+
+1. Set the theoretical mean equal to the sample mean:
+   \[ \frac{1-p}{p} = \bar{x} \]
+2. Solve for $p$:
+   \[ 1-p = p\bar{x} \]
+   \[ 1 = p\bar{x} + p \]
+   \[ 1 = p(\bar{x} + 1) \]
+   \[ p = \frac{1}{\bar{x} + 1} \]
+
+Thus, the method of moments estimator for $p$ is $\hat{p} = \frac{1}{\bar{x} + 1}$.
+
+### b. Sampling Distribution of the Estimator
+
+To estimate the sampling distribution of $\hat{p}$ when sampling $n=13$ values from $Geom(0.15)$, we can perform a simulation in R. We will generate many samples of size 13, compute the estimator for each sample, and then plot the histogram of these estimators.
+
+### c. Estimating the Bias of the Estimator
+```{r}
+# a. Method of Moments Estimator for Geometric Distribution
+# Define the estimator function
+mom_estimator <- function(sample) {
+  1 / (mean(sample) + 1)
+}
+
+# b. Sampling Distribution of the Estimator
+# Set parameters for the simulation
+n <- 13          # Sample size
+p_true <- 0.15   # True value of p
+num_samples <- 10000  # Number of samples for the simulation
+
+# Simulate the sampling distribution
+set.seed(123)  # For reproducibility
+estimates <- replicate(num_samples, mom_estimator(rgeom(n, p_true)))
+
+# Plot the histogram of the estimates
+hist(estimates, main = "Histogram of MOM Estimates for p", xlab = "Estimated p", breaks = 40)
+
+# c. Estimating the Bias of the Estimator
+# Calculate the bias
+bias <- mean(estimates) - p_true
+
+# Output the bias
+bias
+```
+
+
+
+## Problem \#3: Estimating $\lambda$ from a Poisson Distribution<small>(8 pts; 2 pts each)</small>
+
+It is interesting that if $X\sim Pois(\lambda)$ that $EX=VarX=\lambda$. One could use either $\bar{X}$ or $S^2$ as an estimator of $\lambda$ perhaps. 
+
+a. Using $n=15$ and $\lambda=20$ for this problem, use MC simulation to estimate the sampling distribution of The estimator $\bar{X}$. Show its histogram. 
+b. Repeat the same but this time use $S^2$. 
+c. Compare the two estimators. Would you prefer one over the other? Why?
+d. What about a linear combination of the two variables? Could you construct an estimator of $\lambda$ of the form $a\bar{X} + bS^2$ that would be better than using either of them by themselves? 
+
+Let's address each part of this problem:
+
+### a. Sampling Distribution of \(\bar{X}\) as an Estimator for \(\lambda\)
+
+We will simulate sampling from a Poisson distribution with \( \lambda = 20 \), calculate \( \bar{X} \) for each sample, and then plot the histogram of these sample means.
+
+### b. Sampling Distribution of \( S^2 \) as an Estimator for \(\lambda\)
+
+Similarly, we'll simulate sampling from the same Poisson distribution, calculate the sample variance \( S^2 \) for each sample, and plot the histogram of these sample variances.
+
+### c. Comparison of the Two Estimators
+
+We'll compare \( \bar{X} \) and \( S^2 \) in terms of their bias and variance to determine if one might be preferable over the other.
+
+### d. Linear Combination of \( \bar{X} \) and \( S^2 \)
+
+We will explore if a linear combination of \( \bar{X} \) and \( S^2 \), say \( a\bar{X} + bS^2 \), could provide a better estimator for \( \lambda \). The coefficients \( a \) and \( b \) would be chosen to minimize the estimator's variance while maintaining its unbiasedness.
+
+
+```{r}
+# Parameters for simulation
+n <- 15
+lambda <- 20
+num_samples <- 10000
+
+# a. Sampling Distribution of X-bar
+set.seed(123)
+sample_means <- replicate(num_samples, mean(rpois(n, lambda)))
+hist(sample_means, main = "Histogram of Sample Means (X-bar)", xlab = "X-bar", breaks = 40)
+
+# b. Sampling Distribution of S^2
+set.seed(123)
+sample_variances <- replicate(num_samples, var(rpois(n, lambda)))
+hist(sample_variances, main = "Histogram of Sample Variances (S^2)", xlab = "S^2", breaks = 40)
+
+# c. Compare the two estimators
+# Calculate the mean and variance of each estimator
+mean_xbar <- mean(sample_means)
+var_xbar <- var(sample_means)
+mean_s2 <- mean(sample_variances)
+var_s2 <- var(sample_variances)
+
+# Output the means and variances
+mean_xbar
+var_xbar
+mean_s2
+var_s2
+
+# d. Linear Combination of X-bar and S^2
+# For simplicity, consider a = b = 0.5 as an example (not necessarily optimal)
+a <- 0.5
+b <- 0.5
+combined_estimator <- a * sample_means + b * sample_variances
+mean_combined <- mean(combined_estimator)
+var_combined <- var(combined_estimator)
+
+# Output the mean and variance of the combined estimator
+mean_combined
+var_combined
+```
+
+
+## Problem \#4: The Standard Error of $\bar{X}$<small>(8 pts; 2 pts each)</small>
+
+What would be the required sample size $n$ so that the standard error of $\bar{X}$ (i.e. $SD(\bar{X})$) would be 2 (or just under 2) for the following populations:
+
+a. $\text{Normal}(1000, 10^2)$
+b. $\text{Poisson}(75)$
+c. $\text{Binomial}(200, .35)$
+d. $\text{Exponential}(.05)$
+
+```{r}
+# Standard error target
+SE_target <- 2
+
+# a. Normal(1000, 10^2)
+sigma_normal <- 10
+n_normal <- (sigma_normal / SE_target)^2
+
+# b. Poisson(75)
+lambda_poisson <- 75
+sigma_poisson <- sqrt(lambda_poisson)
+n_poisson <- (sigma_poisson / SE_target)^2
+# Since we need an integer number of samples, we round up
+n_poisson <- ceiling(n_poisson)
+
+# c. Binomial(200, 0.35)
+# Here we use the standard deviation of the binomial distribution to calculate
+# the sample size required for the mean's standard error to be under 2.
+n_binomial_trial <- 200
+p_binomial <- 0.35
+sigma_binomial <- sqrt(n_binomial_trial * p_binomial * (1 - p_binomial))
+n_binomial <- (sigma_binomial / SE_target)^2
+# Adjust for the mean's sample size, not just a single trial
+n_binomial <- ceiling(n_binomial)
+
+# d. Exponential(0.05)
+lambda_exponential <- 0.05
+sigma_exponential <- 1 / lambda_exponential
+n_exponential <- (sigma_exponential / SE_target)^2
+
+# Output the results
+n_normal
+n_poisson
+n_binomial
+n_exponential
+```
+
+
+

@@ -1,0 +1,236 @@
+---
+title: "Homework 5"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Problem \#1: Testing coin flips <small>(6 pts)</small>
+
+In the six sequences below, only one of them is actually **randomly generated from independent flips of a fair coin**. Use a combination of everything you know (common sense, Monte Carlo, hypothesis testing, etc.) to identify which is actually random and explain your reasoning.
+
+(For full points, conduct a formal test and report a p-value for each sequence. You may use a combination of multiple tests to arrive at your answer. If you cannot compute a p-value for each sequence, you can still earn a significant amount of partial credit by carefully explaining your reasoning and response as best as you can.)
+
+My advice is **be creative** with the test statistics you come up with to eliminate each sequence! Think of some way of summarizing a sequence of flips that might be useful for comparing against a simulated sequence of random flips. After you come up with an idea for a statistic, remember to run it on many MC generated completely random flips to produce a distribution under the null, which you can then compare with your data to get a p-value. Also, be careful of now you define "more extreme" than the data.
+
+(2 bonus points available if you can find a single test that is powerful enough to reject all the fake sequences together in one step. Yes, at least one such possible test exists.)
+
+```{r}
+flips1 = "HTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHTHT"
+
+flips2 = "HHHTHTTTHHTHHTHHHTTTTHTHTHHTTHTHHHTHHTHTTTHTHHHTHTTTHTHTHHTHTHTTHTHHTHTHTTTHTHHHTHTHTTHTHTHHTHTHTHHHTHTTTHTHHTHTHTHHTTTHTHHTHHTTTTHTHTHHHTHTTHTHHTHTHTTHTHHTHTHHHTHHHTHTTTHTTHTTTHTHHHTHTHTTHTHHTHHTHTTT"
+
+flips3 = "HHTHTHTTTHTHHHTHHTTTHTHHTHTTTHTHTHHTHTHTTHTHHHHHHTTTHTHTHHTHTTTHTHHTHTHTTTHTHHHTTHTTTHTHTHHHHTHTTHHTTTTTHTHHHTHTHTTTTTHHHTHHTHHTHHHTTTTHTHTHHHTHHTTTTTHTHHHTHTHTHTTTHTHHHTHTHTHTTHTHHTHTHTHTTTTHTHHHTHTH"
+
+flips4 = "HTHHHHHHHTHTTHHTTHHHTHTHTTTHHTHHHTHHTTHTTTTTTTTTHTHHTTTTTHTHTHTHHTTHTTHTTTTTHHHTHTTTHTHTHHHTHTTTTHTHTHHTTHTHTTHHTHTHHHHTHTTHHTTHTTHTTHTHHHHHHTTTTTTHHHTTHTHHHHTTTHTTHHHTTHTHHTTTHHTHHTTTHTHHTHHHTHHTTHHH"
+
+flips5 = "HHHHHHHHHHTTTTTTTTTTHHHHHHHHHHTTTTTTTTTTHHHHHHHHHHTTTTTTTTTTHHHHHHHHHHTTTTTTTTTTHHHHHHHHHHTTTTTTTTTTHHHHHHHHHHTTTTTTTTTTHHHHHHHHHHTTTTTTTTTTHHHHHHHHHHTTTTTTTTTTHHHHHHHHHHTTTTTTTTTTHHHHHHHHHHTTTTTTTTTT"
+
+flips6 = "TTHTTTHTTTTTTTHTHTHTHTTHTTHTHHTHHTTTHHTHTTTHTHHTHHHTHTTHHTHHTTHTHTTTTHTHTTTHHTTTTTTTTHTHHTTHTTTTTTHTHTHTHTTTHTTHHTTHTTTHHTTTHTTHTTTTHTTTTHHTTTHTHTHHHTTTTTTHTHHTTTTTTTTTTTTHHHTTTHHHTTTHTTTHTHTTHTTTTTHT"
+
+# you can use the function below to split the above sequences in vectors of flips
+split = function(str) strsplit(str, split="")[[1]]
+split(flips1)
+```
+
+
+> Using Chi-Square tests
+
+```{r}
+# Function to convert flip sequences to numeric format
+flips_to_numeric <- function(flips) {
+  ifelse(flips == 'H', 1, 0)
+}
+
+numeric_flips1 <- flips_to_numeric(split(flips1))
+numeric_flips2 <- flips_to_numeric(split(flips2))
+numeric_flips3 <- flips_to_numeric(split(flips3))
+numeric_flips4 <- flips_to_numeric(split(flips4))
+numeric_flips5 <- flips_to_numeric(split(flips5))
+numeric_flips6 <- flips_to_numeric(split(flips6))
+
+# Runs test for a binary sequence
+runs_test_numeric <- function(flips) {
+  n1 <- sum(flips)
+  n2 <- length(flips) - n1
+  runs <- sum(diff(flips) != 0) + 1
+  expected_runs <- 2 * n1 * n2 / (n1 + n2) + 1
+  var_runs <- 2 * n1 * n2 * (2 * n1 * n2 - n1 - n2) / ((n1 + n2)^2 * (n1 + n2 - 1))
+  z_score <- (runs - expected_runs) / sqrt(var_runs)
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  return(p_value)
+}
+
+
+runs_test_result_flips1 <- runs_test_numeric(numeric_flips1)
+runs_test_result_flips2 <- runs_test_numeric(numeric_flips2)
+runs_test_result_flips3 <- runs_test_numeric(numeric_flips3)
+runs_test_result_flips4 <- runs_test_numeric(numeric_flips4)
+runs_test_result_flips5 <- runs_test_numeric(numeric_flips5)
+runs_test_result_flips6 <- runs_test_numeric(numeric_flips6)
+
+runs_test_result_flips1
+runs_test_result_flips2
+runs_test_result_flips3
+runs_test_result_flips4
+runs_test_result_flips5
+runs_test_result_flips6
+```
+
+> It apperas that since the p value of flips4 is closest to 0.5, it appears that the 4th sequence is most likely to be the randomly generated sequence.
+
+
+## Problem \#2: Finding the Trick Coin <small>(6 pts; 2pts each)</small>
+
+I have two coins in my pocket - a trick coin with two heads and a fair coin with one head and one tail(s?). We'll play a game. I will grab one coin at random, and flip it $N$ times. After that you will have to decide if it is the fair coin or the trick coin. The null hypothesis is that it is the fair coin. 
+
+**Decision Rule 1**: If after $N$ flips there are no tails, then you decide it is the trick coin. If there is at least 1 tail then you know it is the fair coin. 
+
+a. Using "Decision Rule 1", what is the lowest number of flips $N$ would you need in order to have a significance level less than 5% for this test?
+
+```{r}
+# Initialize N
+N <- 1
+# Loop to find the lowest N where significance level is less than 5%
+while ((0.5)^N >= 0.05) {
+  N <- N + 1
+}
+N
+```
+
+b. Using $N$ from part a, what is the power of the test?
+
+```{r}
+power_percent = N/0.05
+power_percent
+```
+
+> Given the decision rule and the nature of the trick coin (which always lands heads), the power of the test is 100% or 1, because if the trick coin is chosen, it will always result in heads, and our decision rule will always correctly identify it as the trick coin.
+
+c. Suppose $N=4$ is decided. How can you modify the decision process to have a significance level of exactly 5%? Does this change the power of the test?
+
+> For $N=4$, to modify the decision process to have a significance level of exactly 5%, consider the binomial probability of getting at least one tail in 4 flips of a fair coin. You might adjust the decision rule based on a different threshold of the number of heads observed. However, given the original rule, we have a specific way of identifying the coin which doesn't easily adjust for $N=4$ to get exactly 5%. The original decision rule is strict and doesn't allow for a variable significance level with a fixed $N$ without changing the nature of the rule itself.
+
+d. Extra Credit (2 points): Suppose if you guess correct you win \$100 (and if you're wrong you get nothing), but each flip of the coin costs \$10. What strategy would you use to maximize your expected profit from this game?
+
+> This part requires considering the costs and benefits of each additional flip. Here's a conceptual approach to solve this:
+Calculate the expected profit for different numbers of flips, considering the cost per flip and the reward for a correct guess.
+For each number of flips, calculate the probability of correctly identifying the coin (both fair and trick) and the associated profit.
+Find the number of flips that maximizes expected profit.
+This involves more complex calculations, considering both the probability of making a correct decision and the costs/rewards associated with each scenario.
+
+## Problem \#3: Testing the maximum of a uniform distribution <small>(8 pts; 2 pts each)</small>
+
+We sample $X_1, X_x,\ldots,X_n \overset{\text{iid}}\sim\text{Uniform}(0,m)$ where $m$ is an unknown maximum. Sleazy Jim tells you that $m=1$ but you're not so sure. The 50 values sampled are in the following data file:
+
+```{r}
+X <- read.csv("../../data/uniform_sample.csv")$x
+X
+```
+
+a. Write out in formal notation the null and alternative hypotheses. 
+
+> Null hypothesis ($H_0$): The maximum $m$ of the uniform distribution is 1, i.e., $m = 1$.
+Alternative hypothesis ($H_1$): The maximum $m$ of the uniform distribution is not 1, i.e., $m \neq 1$. 
+
+b. Come up with a test statistic and measure your sampled data. Is this a one-sided test or two-sided test?
+
+A natural test statistic for this problem is the maximum value observed in the sample, as it directly relates to the parameter of interest ($m$). The reasoning is that if $m$ were truly 1, it would be unlikely to observe a maximum significantly greater than 1.
+
+This would typically be a one-sided test, especially if we're testing if the maximum $m$ is greater than 1 based on the alternative hypothesis that $m > 1$. However, since Sleazy Jim asserts $m=1$, and we suspect it might not be, we focus on whether the data suggests $m > 1$.
+
+```{r}
+test_statistic <- max(X)
+```
+
+
+c. Simulate a distribution for the test statistic under the null hypothesis of size at least 1000. Display a histogram of your test statistic distribution.
+
+> To simulate the distribution under the null hypothesis, we would generate many samples (at least 1000) from a uniform distribution with $m=1$ and calculate the maximum of each sample. Then, we can create a histogram of these maximums to visualize the distribution.
+
+```{r}
+simulated_maxes <- replicate(1000, max(runif(50, min = 0, max = 1)))
+hist(simulated_maxes)
+```
+
+
+d. Calculate the $p$-value for this data and make a conclusion.
+
+```{r}
+# Assuming X is your sample data and simulated_maxes contains your simulated maxima
+observed_max <- max(X)
+
+# Calculate the p-value
+p_value <- sum(simulated_maxes >= observed_max) / length(simulated_maxes)
+
+# Print the p-value
+print(p_value)
+
+# Make a conclusion
+if(p_value < 0.05) {
+  cat("Reject the null hypothesis: There is evidence that m is not equal to 1.")
+} else {
+  cat("Fail to reject the null hypothesis: There is not enough evidence to conclude that m is not equal to 1.")
+}
+```
+
+
+
+## Problem \#4: Rising Temperatures? <small>(10 pts; 2 pt each)</small>
+
+The `annual_avg_temp.csv` data file contains the US annual average temperature from 1875 through 2022.
+```{r}
+temp <- read.csv("../../data/annual_avg_temp.csv")
+temps <- temp$Annual.Average.Temperature.F
+plot(temp, type="l")
+```
+
+There seems to be a trend but it could be due to randomness. Your task is to perform a permutation test on the historical record of annual avg. temperatures to determine if there is statistical evidence of a real trend.
+
+a. State the null and alternative hypotheses
+
+> Null Hypothesis ($H_0$): There is no real trend in the US annual average temperatures from 1875 through 2022; any observed trend is due to randomness.
+Alternative Hypothesis ($H_1$): There is a real upward or downward trend in the US annual average temperatures over the period.
+
+b. Determine a test statistic that identify non-randomness in the temperatures
+
+```{r}
+observed_test_statistic <- sum(diff(temps))
+```
+
+
+c. Decide whether the test will be a one or two-tailed test
+
+> Given the alternative hypothesis suggests a "real trend" without specifying the direction (upward or downward), a two-tailed test seems appropriate to detect any significant deviation from randomness, whether it's an increase or decrease in temperature over time.
+
+
+d. Simulate a distribution of test statistics under the null hypothesis
+
+```{r}
+set.seed(123) # For reproducibility
+num_simulations <- 10000
+simulated_test_statistics <- replicate(num_simulations, {
+  permuted_temps <- sample(temps)
+  sum(diff(permuted_temps))
+})
+
+```
+
+
+e. Calculate the test statistic on the observed data, calculate the $p$-value and state your conclusions.
+
+*Hint: basing the test statistic on the differences between consecutive years may be a good idea.*
+
+```{r}
+p_value <- mean(abs(simulated_test_statistics) >= abs(observed_test_statistic))
+
+if (p_value < 0.05) {
+  print("Reject the null hypothesis: There is evidence of a real trend.")
+} else {
+  print("Fail to reject the null hypothesis: There is not enough evidence to conclude a real trend.")
+}
+```
+

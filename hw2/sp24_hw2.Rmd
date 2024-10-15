@@ -1,0 +1,288 @@
+---
+title: "Homework 2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=T,eval=T,message=F,warning=F,fig.align='center')
+library(tidyverse)
+```
+
+
+## 1. Independence of Events <small>(8 points, 2 points each)</small>
+
+A fair four-sided die (numbered 1,2,3 and 4) is rolled three times. Consider the following three events:
+
+A: "The sum is 6 or less"
+
+B: "The second roll is more than the first"
+
+C: "The sum is odd"
+
+D: "Exactly two of the rolls are the same"
+
+```{r}
+data = data.frame(outcome_1 = integer(), outcome_2 = integer(), outcome_3 = integer())
+
+
+for (i in 1:4) {
+  for (j in 1:4) {
+    for (k in 1:4) {
+      data = rbind(data, c(i, j, k))
+    }
+  }
+}
+names(data) = c("outcome_1", "outcome_2", "outcome_3")
+
+data$sum = with(data, outcome_1+outcome_2+outcome_3 )
+data$A = data$sum <= 6
+data$B = data$outcome_2 > data$outcome_1
+data$C = data$sum %% 2 == 1
+data$D = (data$outcome_1 == data$outcome_2 & data$outcome_1 != data$outcome_3) |
+              (data$outcome_1 == data$outcome_3 & data$outcome_1 != data$outcome_2) |
+              (data$outcome_2 == data$outcome_3 & data$outcome_2 != data$outcome_1)
+
+
+prob_A = mean(data$A)
+prob_B = mean(data$B)
+prob_C = mean(data$C)
+prob_D = mean(data$D)
+prob_A_B = mean(data$A & data$B)
+prob_C_D = mean(data$C & data$D)
+prob_A_C = mean(data$A & data$C)
+prob_B_D = mean(data$B & data$D)
+
+indep_a = prob_A_B == prob_A * prob_B
+indep_b = prob_C_D == prob_C * prob_D
+indep_c = prob_A_C == prob_A * prob_C
+indep_d = prob_B_D == prob_B * prob_D
+
+print(indep_a)
+print(indep_b)
+print(indep_c)
+print(indep_d)
+```
+
+
+a. Are A and B independent?
+
+> No
+
+b. Are C and D independent?
+
+> Yes
+
+c. Are A and C independent?
+
+> No
+
+d. Are B and D independent?
+
+> No
+
+
+## 2. Stock Portfolio <small>(8 points, 2 points each)</small>
+
+Consider two stocks. Stock A has a mean annual return of 0.05 and a standard deviation of 0.01. Stock B has a mean annual return of 0.10 and a standard deviation of 0.04. Past data suggests that the prices have a correlation of -0.65.
+You have \$1000 to invest in a portfolio composed of these two stocks.
+
+```{r}
+mean_a = 0.05
+sd_a = 0.01
+mean_b = 0.10
+sd_b = 0.04
+correlation_AB = -0.65
+principle_A = 500
+principle_B = 500
+investment_t = 1000
+```
+
+
+a. Suppose you invest \$500 in stock A and \$500 in stock B. What will be the expected return and the standard deviation of your portfolio (in dollars)? 
+*Hint:* $SD(aX+bY) = \sqrt{Var(aX+bY)}= \sqrt{a^2Var(X)+2abCov(X,Y)+b^2Var(Y)}$ and $Cov(X,Y)=\sigma_X \sigma_Y \rho_{XY}$
+
+```{r}
+ex_return = (principle_A * mean_a) + (principle_B * mean_b)
+
+
+covariance_AB = correlation_AB * sd_a * sd_b
+variance_portfolio = ((principle_A^2) * (sd_a^2) + (principle_B^2) * (sd_b^2) + 2 * principle_A * principle_B * covariance_AB) / (investment_t^2)
+std_dev_portfolio = sqrt(variance_portfolio)
+
+cat(ex_return)
+cat(std_dev_portfolio*investment_t)
+```
+
+b. Give an expression for the standard deviation for a portfolio investing $\$x$ in stock A and $\$1000-x$ in stock B. 
+
+```{r}
+portfolio_std_dev = function(x) {
+  covariance_AB = sd_a * sd_b * correlation_AB
+  variance_portfolio = ((x/investment_t)^2 * sd_a^2 + 
+                         ((investment_t-x)/investment_t)^2 * sd_b^2 + 
+                         2 * (x/investment_t) * ((investment_t-x)/investment_t) * covariance_AB)
+  sd_portfolio = sqrt(variance_portfolio)
+  return(sd_portfolio)
+}
+
+sd_2 = portfolio_std_dev(500)*investment_t
+sd_2
+```
+
+
+c. Find the value $x$ that minimizes this standard deviation.
+
+```{r}
+covariance_AB = sd_a * sd_b * correlation_AB
+
+
+portfolio_std_dev = function(x) {
+  variance_portfolio = ((x/investment_t)^2 * sd_a^2 + 
+                         ((investment_t-x)/investment_t)^2 * sd_b^2 + 
+                         2 * (x/investment_t) * ((investment_t-x)/investment_t) * covariance_AB)
+  std_dev_portfolio <- sqrt(variance_portfolio)
+  return(std_dev_portfolio)
+}
+
+optimal_x = optimize(portfolio_std_dev, interval = c(0, 1000))
+
+cat(optimal_x$minimum)
+cat(optimal_x$objective)
+```
+
+d. What is the expected return and standard deviation (in dollars) for the portfolio split you chose in part c?
+
+```{r}
+o_x = 837.838
+sd_o = sqrt((o_x^2*sd_a^2) + (2 * o_x * (investment_t-o_x) * covariance_AB) + ((investment_t-o_x)^2 * sd_b^2))
+
+cat(sd_o)
+
+return_o = mean_a* o_x + (investment_t- o_x) * mean_b
+cat(return_o)
+```
+
+
+## 3. Mousetrap: A Rube Goldberg Machine  <small>(5 points, 1 points each)</small>
+
+Consider the board game Mousetrap. When you trigger the ball needs to 
+
+1. roll down a ramp
+2. be carried up by a hammer
+3. roll  down another ramp
+4. go down a bathtub drain
+5. land on a lever which
+6. sends a diver into a basin which then
+7. causes the trap to descend.
+
+Suppose you can model the success of each component as independent Bernoulli random variables $X_1$ through $X_7$, where the probability of $X_i$ succeeding is $.94$ for each component. 
+
+a. What is the probability that the trap works correctly from beginning to end?
+
+```{r}
+p_success = 0.94
+p_failure = 1 - p_success
+
+prob_trap_works = p_success^7
+prob_trap_works
+```
+
+
+b. If you attempt the trap 15 times during a game, how many times do you expect it to work correctly from beginning to end?
+
+```{r}
+expected_successes = 15 * prob_trap_works
+expected_successes
+```
+
+
+c. Suppose you let the marble go: Let $Y$ be the number of components of the trap that work in a row. If one component fails, then you stop counting. Calculate the probability mass function of $Y$. *Hints: $Y$ can have values $0, 1, 2, 3, 4, 5, 6$ or $7$). This is like a Geometric except it does not have infinite support. How can you use this fact to determine the pmf? But what is a 'success' in this context?*
+
+```{r}
+pmf_Y <- function(y) {
+  p_success^y* (p_failure)
+}
+pmf_0 = pmf_Y(0)
+pmf_1 = pmf_Y(1)
+pmf_2 = pmf_Y(2)
+pmf_3 = pmf_Y(3)
+pmf_4 = pmf_Y(4)
+pmf_5 = pmf_Y(5)
+pmf_6 = pmf_Y(6)
+pmf_7 = pmf_Y(7)
+
+cat(pmf_0)
+cat(pmf_1)
+cat(pmf_2)
+cat(pmf_3)
+cat(pmf_4)
+cat(pmf_5)
+cat(pmf_6)
+cat(pmf_7)
+```
+
+
+d. Calculate the expected value of $Y$ and its variance. 
+
+```{r}
+p = c(0.06, 0.056, 0.053, 0.0498, 0.047, 0.044, 0.041, 0.648)
+
+y = 0:7
+
+E_Y = sum(y * p)
+
+E_Y2 = sum((y^2) * p)
+
+
+Var_Y = E_Y2 - (E_Y^2)
+
+E_Y
+Var_Y
+```
+
+e. What is $P(Y = 6 | Y \geq 3)$?
+
+```{r}
+p_y = p[7]
+p_y_greater_3 = sum(p[4:8])
+probaility = p_y / p_y_greater_3
+
+probaility
+```
+
+
+## 4. Bayes Rule with forecasting  <small>(9 points, 3 points each)</small>
+
+Madison, Wisconsin gets about 115 days of precipitation per year (we'll just call it rain for the remainder of this problem, even though it is often snow). Suppose that when it rains, the forecast on Channel 3000 is correct 93% of the time and when it doesn't rain they are correct 87% of the time.
+
+a. How many correctly forecasted days do you expect in a 365 day year?
+
+```{r}
+p_rain = 115/365
+p_no_rain = 1 - p_rain
+p_correct_rain = 0.93
+p_correct_no_rain = 0.87
+
+expected_correct_forecasted_days = p_rain * p_correct_rain * 365 + p_no_rain * p_correct_no_rain * 365
+expected_correct_forecasted_days
+```
+
+
+b. If the forecast calls for rain, what is the likelihood that it actually rains?
+
+```{r}
+p_rain_given_forecast_rain = (p_rain * p_correct_rain) / ((p_rain * p_correct_rain) + (p_no_rain * (1 - p_correct_no_rain)))
+p_rain_given_forecast_rain
+```
+
+
+c. Suppose that if the forecast was correct yesterday then it increases the likelihood of correctness today. Specifically, if the forecast was correct yesterday, then the probabilities from part a. increase to .98 and .92 respectively. If the forecast was correct on January 29th, what is the probability it was correct on January 28th? To answer this, let us take it as given that the forecast was **incorrect** on the 27th.
+
+```{r}
+accuracy_rain = 0.98
+accuracy_no_rain = 0.92
+
+p_28_jan = (115/365) * accuracy_rain + ((365-115)/365) * accuracy_no_rain
+p_28_jan
+```
+
